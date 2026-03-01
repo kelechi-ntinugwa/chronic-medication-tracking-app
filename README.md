@@ -1,71 +1,96 @@
 # Chronic Medication Tracking App
 
-A React Native application for tracking chronic medication, built with Expo and Firebase.
+This repository contains a comprehensive chronic medication tracking solution. It features a mobile application, a responsive web portal, and a robust backend API.
 
-## Features
-- **Medication Calendar**: Track pickup dates.
-- **Digital Card**: View your CCMDD card details.
-- **Reminders**: Get notified before your pickup.
-- **Directory**: Find pickup points on a map.
-- **Stock Alerts**: Report and view stock shortages.
-- **Health Log**: Track chronic conditions.
-- **Patient & Doctor Roles**: Secure portal for different user types.
-- **Secure Login**: Using JWT and ASP.NET Identity.
-- **Book Appointments**: Schedule visits with healthcare providers.
-- **Video Call Integration**: Telehealth via WebRTC, Twilio, or Daily.co.
-- **Encrypted Medical Records**: Field encryption for app-level note security.
-- **Prescription PDF Generation**: Automatically generate downloadable prescriptions.
+## Project Structure
 
-## System Architecture (Planned for Web Portal)
+- **`/` (Root)**: React Native (Expo) mobile application.
+- **`/web-portal`**: Next.js (React) + TypeScript frontend web application providing role-based dashboards for Patients and Providers.
+- **`/api`**: ASP.NET Core Web API acting as the secure backend, utilizing Entity Framework Core and PostgreSQL.
 
-### Frontend
-- Next.js (React) + TypeScript
-- TailwindCSS
+## Core Features
+- **Role-Based Portals**: Secure dashboards tailored for Patients and Doctors/Providers.
+- **Medication & Appointment Tracking**: Book appointments and write/view prescriptions.
+- **Video Call Integration**: Telehealth via Daily.co / WebRTC.
+- **Encrypted Medical Records**: Field-level encryption for app-level note security using the ASP.NET Data Protection API.
+- **Secure Authentication**: JWT and ASP.NET Identity.
+- **Digital Card**: View CCMDD card details (Mobile).
+- **Directory**: Find pickup points on a map (Mobile).
 
-### Backend (API)
-- ASP.NET Core Web API
-- Entity Framework Core
-- ASP.NET Identity & JWT authentication
+---
 
-### Database & Storage
-- PostgreSQL
-- Azure Blob / Amazon S3 / Cloudflare R2 for file storage
+## 1. Backend API (ASP.NET Core)
 
-### Integrations & Security
-- **Video**: Twilio Video or Daily.co
-- **Security**: Data Protection API (for tokens), Basic OWASP checks, Field encryption for notes (app-level)
-- **Testing**: xUnit with integration tests
+Located in the `/api` directory.
 
-### Deployment
-- Azure App Service (API)
-- Azure Database for PostgreSQL (or Render)
+### Setup & Running
 
-## Setup
+1. **Navigate to the API directory**:
+   ```bash
+   cd api
+   ```
+2. **Configure Database**:
+   Update the `ConnectionStrings:DefaultConnection` in `appsettings.json` to point to your local PostgreSQL instance.
 
-1.  **Install Dependencies**:
-    ```bash
-    npm install
-    ```
+3. **Apply EF Core Migrations**:
+   Run the following command to create the database schema:
+   ```bash
+   dotnet ef database update
+   ```
 
-2.  **Firebase Configuration**:
-    - Create a project at [firebase.google.com](https://firebase.google.com).
-    - Register a Web App.
-    - Copy the `firebaseConfig` object.
-    - Paste it into `src/services/firebase.js`.
+4. **Start the Development Server**:
+   ```bash
+   dotnet run
+   ```
+   The API will typically be accessible at `http://localhost:5233` or `https://localhost:7143`.
 
-3.  **Google Maps (Optional for Android)**:
-    - Get an API Key from Google Cloud Console.
-    - Add it to `app.json` under `android.config.googleMaps.apiKey`.
+---
 
-## Running the App
+## 2. Web Portal (Next.js)
 
-Start the development server:
+Located in the `/web-portal` directory.
 
+### Setup & Running
+
+1. **Navigate to the Web Portal directory**:
+   ```bash
+   cd web-portal
+   ```
+2. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+3. **Start the Development Server**:
+   ```bash
+   npm run dev
+   ```
+   The web application will be accessible at `http://localhost:3000`.
+
+---
+
+## 3. Mobile App (React Native / Expo)
+
+Located in the root directory.
+
+### Setup & Configurations
+
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+2. **Firebase Configuration**:
+   - Create a project at [firebase.google.com](https://firebase.google.com).
+   - Register a Web App and copy the `firebaseConfig` object.
+   - Paste it into `src/services/firebase.js`.
+3. **Google Maps (Optional for Android)**:
+   - Get an API Key from Google Cloud Console.
+   - Add it to `app.json` under `android.config.googleMaps.apiKey`.
+
+### Running the Mobile App
+
+Start the Expo development server:
 ```bash
 npx expo start
 ```
-
-- **Physical Device**: Download the **Expo Go** app (App Store / Play Store) and scan the QR code.
-- **Android Emulator**: Press `a` in the terminal (requires Android Studio).
-- **iOS Simulator**: Press `i` in the terminal (requires Xcode on Mac).
-- **Web Browser**: Press `w` in the terminal.
+- **Physical Device**: Download **Expo Go** (App Store / Play Store) and scan the QR code.
+- **Emulator/Simulator**: Press `a` for Android or `i` for iOS in the terminal.
