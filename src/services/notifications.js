@@ -85,3 +85,31 @@ export const scheduleMedicationReminder = async (medName, date) => {
         });
     }
 };
+
+export const scheduleDailyDoseReminder = async (medName, timeOfDay, dosage) => {
+    // timeOfDay e.g., "09:00" or Date object
+    let triggerHour = 9;
+    let triggerMinute = 0;
+
+    if (timeOfDay instanceof Date) {
+        triggerHour = timeOfDay.getHours();
+        triggerMinute = timeOfDay.getMinutes();
+    } else if (typeof timeOfDay === 'string' && timeOfDay.includes(':')) {
+        const parts = timeOfDay.split(':');
+        triggerHour = parseInt(parts[0], 10);
+        triggerMinute = parseInt(parts[1], 10);
+    }
+
+    await Notifications.scheduleNotificationAsync({
+        content: {
+            title: `Time for your ${medName}`,
+            body: `Don't forget to take your ${dosage} of ${medName}. Tap to log it!`,
+            data: { type: 'daily_dose', medName: medName }
+        },
+        trigger: {
+            hour: triggerHour,
+            minute: triggerMinute,
+            repeats: true,
+        },
+    });
+};

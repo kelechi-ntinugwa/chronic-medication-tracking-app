@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
 import { COLORS } from '../constants/theme';
 import { createUserProfile, getUserProfile } from '../services/firestore';
-// import { auth } from '../services/firebase';
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
+    const navigation = useNavigation();
     const [name, setName] = useState('');
     const [facility, setFacility] = useState('');
     const [fileNumber, setFileNumber] = useState('');
@@ -87,6 +88,19 @@ export default function ProfileScreen() {
                 <TouchableOpacity style={styles.button} onPress={handleSave}>
                     <Text style={styles.buttonText}>Save Profile</Text>
                 </TouchableOpacity>
+
+            </View>
+
+            <View style={styles.actionContainer}>
+                <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Dependents')}>
+                    <Text style={styles.actionCardTitle}>Family & Dependents</Text>
+                    <Text style={styles.actionCardSub}>Manage care for others</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.actionCard} onPress={() => navigation.navigate('Insurance')}>
+                    <Text style={styles.actionCardTitle}>Insurance Cards</Text>
+                    <Text style={styles.actionCardSub}>Store medical aid details</Text>
+                </TouchableOpacity>
             </View>
         </ScrollView>
     );
@@ -141,4 +155,27 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
     },
+    actionContainer: {
+        marginTop: 20,
+        marginBottom: 40,
+    },
+    actionCard: {
+        backgroundColor: COLORS.white,
+        padding: 20,
+        borderRadius: 15,
+        marginBottom: 15,
+        borderLeftWidth: 4,
+        borderLeftColor: COLORS.secondary,
+        elevation: 2,
+    },
+    actionCardTitle: {
+        fontSize: 16,
+        fontWeight: 'bold',
+        color: COLORS.text,
+    },
+    actionCardSub: {
+        fontSize: 12,
+        color: COLORS.textLight,
+        marginTop: 4,
+    }
 });

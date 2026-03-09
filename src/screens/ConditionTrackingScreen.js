@@ -10,6 +10,7 @@ export default function ConditionTrackingScreen() {
     const [modalVisible, setModalVisible] = useState(false);
     const [type, setType] = useState('Blood Pressure');
     const [value, setValue] = useState('');
+    const [severity, setSeverity] = useState('');
 
     const addLog = () => {
         if (!value) return;
@@ -17,6 +18,7 @@ export default function ConditionTrackingScreen() {
             id: Date.now().toString(),
             type,
             value,
+            severity,
             date: new Date().toISOString().split('T')[0]
         };
         setLogs([newLog, ...logs]);
@@ -39,7 +41,9 @@ export default function ConditionTrackingScreen() {
                             <Text style={styles.logType}>{item.type}</Text>
                             <Text style={styles.logDate}>{item.date}</Text>
                         </View>
-                        <Text style={styles.logValue}>{item.value}</Text>
+                        <Text style={styles.logValue}>
+                            {item.value} {item.severity ? `(Severity: ${item.severity})` : ''}
+                        </Text>
                     </View>
                 )}
                 contentContainerStyle={styles.list}
@@ -55,7 +59,7 @@ export default function ConditionTrackingScreen() {
                     <Text style={styles.modalTitle}>Log Health Data</Text>
 
                     <View style={styles.typeContainer}>
-                        {['Blood Pressure', 'Glucose', 'Viral Load'].map(t => (
+                        {['Blood Pressure', 'Glucose', 'Viral Load', 'Symptoms'].map(t => (
                             <TouchableOpacity
                                 key={t}
                                 style={[styles.typeButton, type === t && styles.typeButtonActive]}
@@ -68,10 +72,20 @@ export default function ConditionTrackingScreen() {
 
                     <TextInput
                         style={styles.input}
-                        placeholder="Value (e.g. 120/80)"
+                        placeholder={type === 'Symptoms' ? "Describe symptom" : "Value (e.g. 120/80)"}
                         value={value}
                         onChangeText={setValue}
                     />
+
+                    {type === 'Symptoms' && (
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Severity (1-10)"
+                            value={severity}
+                            onChangeText={setSeverity}
+                            keyboardType="numeric"
+                        />
+                    )}
 
                     <View style={styles.modalButtons}>
                         <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}>

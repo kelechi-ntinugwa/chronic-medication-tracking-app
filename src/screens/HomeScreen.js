@@ -17,11 +17,24 @@ export default function HomeScreen({ navigation }) {
             </View>
 
             <View style={styles.actions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Reminders')}>
+                    <Text style={styles.actionText}>Reminders</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('StockAlerts')}>
                     <Text style={styles.actionText}>Stock Alerts</Text>
                 </TouchableOpacity>
+            </View>
+            <View style={styles.actions}>
+                <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('Refills')}>
+                    <Text style={styles.actionText}>Request Refills</Text>
+                </TouchableOpacity>
                 <TouchableOpacity style={styles.actionButton} onPress={() => navigation.navigate('ConditionTracking')}>
                     <Text style={styles.actionText}>Health Log</Text>
+                </TouchableOpacity>
+            </View>
+            <View style={styles.actions}>
+                <TouchableOpacity style={[styles.actionButton, { borderColor: COLORS.danger }]} onPress={() => navigation.navigate('EmergencyProfile')}>
+                    <Text style={[styles.actionText, { color: COLORS.danger }]}>Medical ID (SOS)</Text>
                 </TouchableOpacity>
             </View>
         </ScrollView>

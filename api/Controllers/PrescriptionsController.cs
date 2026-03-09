@@ -79,9 +79,24 @@ public class PrescriptionsController : ControllerBase
         var provider = await _context.ProviderProfiles.FirstOrDefaultAsync(p => p.UserId == userId);
         if (provider == null) return BadRequest("Provider profile missing.");
 
-        // Find patient by ID or Email
         var patient = await _context.PatientProfiles.FirstOrDefaultAsync(p => p.Id == request.PatientProfileId);
         if (patient == null) return BadRequest("Patient not found.");
+
+        // Mock AI Drug Interaction Check
+        var existingMeds = await _context.Prescriptions
+            .Where(p => p.PatientId == patient.Id)
+            .Select(p => p.MedicationName.ToLower())
+            .ToListAsync();
+
+        string? interactionWarning = null;
+        if (request.MedicationName.Equals("Lisinopril", StringComparison.OrdinalIgnoreCase) && 
+            existingMeds.Contains("ibuprofen")) {
+            interactionWarning = "⚠️ AI Warning: Combining Lisinopril and Ibuprofen may reduce the antihypertensive effect and increase the risk of renal impairment.";
+        }
+        if (request.MedicationName.Equals("Warfarin", StringComparison.OrdinalIgnoreCase) && 
+            existingMeds.Contains("aspirin")) {
+            interactionWarning = "⚠️ AI Warning: High risk of bleeding when combining Warfarin and Aspirin.";
+        }
 
         var prescription = new Prescription
         {
@@ -89,7 +104,9 @@ public class PrescriptionsController : ControllerBase
             ProviderId = provider.Id,
             MedicationName = request.MedicationName,
             Dosage = request.Dosage,
-            Instructions = request.Instructions
+            Instructions = request.Instructions,
+            InteractionsWarning = interactionWarning,
+            RefillsRemaining = request.RefillsRemaining ?? 0
         };
 
         _context.Prescriptions.Add(prescription);
@@ -105,4 +122,5 @@ public class WritePrescriptionRequest
     public required string MedicationName { get; set; }
     public string? Dosage { get; set; }
     public string? Instructions { get; set; }
+    public int? RefillsRemaining { get; set; }
 }

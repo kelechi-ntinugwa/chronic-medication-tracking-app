@@ -11,6 +11,22 @@ export default function PatientDashboard() {
     const [appointments, setAppointments] = useState<any[]>([]);
     const [prescriptions, setPrescriptions] = useState<any[]>([]);
     const [records, setRecords] = useState<any[]>([]);
+    const [adherence, setAdherence] = useState<any[]>([]);
+    const [symptoms, setSymptoms] = useState<any[]>([]);
+    const [refills, setRefills] = useState<any[]>([]);
+    const [emergencyProfile, setEmergencyProfile] = useState<any>({});
+
+    // Modals state
+    const [showApptModal, setShowApptModal] = useState(false);
+    const [apptDate, setApptDate] = useState("");
+    const [apptProvider, setApptProvider] = useState("");
+
+    const [showSymptomModal, setShowSymptomModal] = useState(false);
+    const [symptomName, setSymptomName] = useState("");
+    const [symptomSeverity, setSymptomSeverity] = useState(1);
+
+    const [showRefillModal, setShowRefillModal] = useState(false);
+    const [refillPrescriptionId, setRefillPrescriptionId] = useState("");
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -24,14 +40,22 @@ export default function PatientDashboard() {
         const fetchData = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const [apptsRes, rxRes, recsRes] = await Promise.all([
+                const [apptsRes, rxRes, recsRes, adherenceRes, sympRes, refillsRes, emRes] = await Promise.all([
                     axios.get("http://localhost:5233/api/appointments", config),
                     axios.get("http://localhost:5233/api/prescriptions", config),
-                    axios.get("http://localhost:5233/api/medicalrecords", config)
+                    axios.get("http://localhost:5233/api/medicalrecords", config),
+                    axios.get("http://localhost:5233/api/adherencelogs", config).catch(() => ({ data: [] })),
+                    axios.get("http://localhost:5233/api/symptoms", config).catch(() => ({ data: [] })),
+                    axios.get("http://localhost:5233/api/refillrequests", config).catch(() => ({ data: [] })),
+                    axios.get("http://localhost:5233/api/emergencyprofile", config).catch(() => ({ data: {} }))
                 ]);
                 setAppointments(apptsRes.data);
                 setPrescriptions(rxRes.data);
                 setRecords(recsRes.data);
+                setAdherence(adherenceRes.data);
+                setSymptoms(sympRes.data);
+                setRefills(refillsRes.data);
+                setEmergencyProfile(emRes.data);
             } catch (err) {
                 console.error("Failed to fetch dashboard data", err);
             }
@@ -44,6 +68,52 @@ export default function PatientDashboard() {
         localStorage.removeItem("token");
         localStorage.removeItem("userEmail");
         router.push("/");
+    };
+
+    const handleBookAppointment = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.post("http://localhost:5233/api/appointments", {
+                ProviderUserId: apptProvider || "provider-demo-id",
+                ScheduledTime: new Date(apptDate).toISOString()
+            }, config);
+            setShowApptModal(false);
+            window.location.reload(); // Refresh data
+        } catch (e) {
+            alert("Error booking appointment");
+        }
+    };
+
+    const handleLogSymptom = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.post("http://localhost:5233/api/symptoms", {
+                Symptom: symptomName,
+                Severity: symptomSeverity,
+                Date: new Date().toISOString()
+            }, config);
+            setShowSymptomModal(false);
+            window.location.reload();
+        } catch (e) {
+            alert("Error logging symptom");
+        }
+    };
+
+    const handleRequestRefill = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            await axios.post("http://localhost:5233/api/refillrequests", {
+                PrescriptionId: parseInt(refillPrescriptionId, 10),
+                RequestedDate: new Date().toISOString()
+            }, config);
+            setShowRefillModal(false);
+            window.location.reload();
+        } catch (e) {
+            alert("Error requesting refill");
+        }
     };
 
     return (
@@ -69,14 +139,17 @@ export default function PatientDashboard() {
                         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Digital Medical Card</h2>
                         <div className="space-y-3 text-sm text-zinc-600 dark:text-zinc-400">
                             <p><span className="font-medium text-zinc-900 dark:text-zinc-200">Name:</span> {userEmail}</p>
-                            <p><span className="font-medium text-zinc-900 dark:text-zinc-200">DOB:</span> Not set</p>
-                            <p><span className="font-medium text-zinc-900 dark:text-zinc-200">Blood Type:</span> Not set</p>
+                            <p><span className="font-medium text-zinc-900 dark:text-zinc-200">Blood Type:</span> {emergencyProfile.bloodType || 'Not set'}</p>
+                            <p><span className="font-medium text-zinc-900 dark:text-zinc-200">Allergies:</span> {emergencyProfile.allergies || 'None listed'}</p>
                         </div>
                     </div>
 
                     {/* Active Prescriptions */}
                     <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Active Prescriptions</h2>
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Active Prescriptions</h2>
+                            <button onClick={() => setShowRefillModal(true)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Request Refill</button>
+                        </div>
                         {prescriptions.length === 0 ? (
                             <p className="text-sm text-zinc-500 italic">No active prescriptions.</p>
                         ) : (
@@ -96,7 +169,7 @@ export default function PatientDashboard() {
                     <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Appointments</h2>
-                            <button className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Book New</button>
+                            <button onClick={() => setShowApptModal(true)} className="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">Book New</button>
                         </div>
                         <div className="space-y-4">
                             {appointments.length === 0 ? (
@@ -128,7 +201,137 @@ export default function PatientDashboard() {
                         </div>
                     </div>
 
+                    {/* Adherence & Reminders */}
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Adherence Logs</h2>
+                        {adherence.length === 0 ? (
+                            <p className="text-sm text-zinc-500 italic">No recent adherence logs.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {adherence.slice(0, 5).map((log: any) => (
+                                    <div key={log.id} className="border-b border-zinc-100 dark:border-zinc-800 pb-3 last:border-0 flex justify-between">
+                                        <div>
+                                            <p className="font-medium text-zinc-900 dark:text-white">{log.medicationName}</p>
+                                            <p className="text-xs text-zinc-500 mt-1">{new Date(log.scheduledTime).toLocaleString()}</p>
+                                        </div>
+                                        <span className={`text-xs font-semibold px-2 py-1 rounded-full ${log.status === 'Taken' ? 'bg-green-50 text-green-600 dark:bg-green-900/30' : 'bg-red-50 text-red-600 dark:bg-red-900/30'}`}>
+                                            {log.status}
+                                        </span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Symptoms Log */}
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Recent Symptoms</h2>
+                            <button onClick={() => setShowSymptomModal(true)} className="text-sm font-medium text-orange-600 dark:text-orange-400 hover:underline">Log Symptom</button>
+                        </div>
+                        {symptoms.length === 0 ? (
+                            <p className="text-sm text-zinc-500 italic">No symptoms logged.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {symptoms.slice(0, 5).map((sym: any) => (
+                                    <div key={sym.id} className="border-l-4 border-orange-400 pl-3">
+                                        <p className="font-medium text-zinc-900 dark:text-white">{sym.symptom} <span className="text-sm text-zinc-500">(Severity: {sym.severity}/10)</span></p>
+                                        <p className="text-xs text-zinc-400 mt-1">{new Date(sym.date).toLocaleDateString()}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Refill Requests */}
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Refill Requests</h2>
+                        {refills.length === 0 ? (
+                            <p className="text-sm text-zinc-500 italic">No recent refill requests.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {refills.slice(0, 5).map((req: any) => (
+                                    <div key={req.id} className="border-b border-zinc-100 dark:border-zinc-800 pb-3 last:border-0 flex justify-between">
+                                        <div>
+                                            <p className="font-medium text-zinc-900 dark:text-white">{req.medicationName} ({req.dosage})</p>
+                                            <p className="text-xs text-zinc-500 mt-1">{new Date(req.requestedDate).toLocaleDateString()}</p>
+                                        </div>
+                                        <span className="text-sm text-indigo-600 dark:text-indigo-400">{req.status}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                 </div>
+
+                {/* Modals */}
+                {showApptModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-lg w-full max-w-md">
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Book Appointment</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Date & Time</label>
+                                    <input type="datetime-local" value={apptDate} onChange={e => setApptDate(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Provider User ID</label>
+                                    <input type="text" placeholder="UUID of Provider" value={apptProvider} onChange={e => setApptProvider(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setShowApptModal(false)} className="px-4 py-2 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">Cancel</button>
+                                    <button onClick={handleBookAppointment} className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-500">Book</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showSymptomModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-lg w-full max-w-md">
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Log Symptom</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Symptom Description</label>
+                                    <input type="text" placeholder="e.g., Headache, Nausea" value={symptomName} onChange={e => setSymptomName(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Severity (1-10)</label>
+                                    <input type="number" min="1" max="10" value={symptomSeverity} onChange={e => setSymptomSeverity(parseInt(e.target.value))} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setShowSymptomModal(false)} className="px-4 py-2 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">Cancel</button>
+                                    <button onClick={handleLogSymptom} className="px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-500">Log Symptom</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {showRefillModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-lg w-full max-w-md">
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Request Refill</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Select Prescription</label>
+                                    <select value={refillPrescriptionId} onChange={e => setRefillPrescriptionId(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
+                                        <option value="">-- Choose --</option>
+                                        {prescriptions.map((rx: any) => (
+                                            <option key={rx.id} value={rx.id}>{rx.medicationName} ({rx.dosage})</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setShowRefillModal(false)} className="px-4 py-2 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">Cancel</button>
+                                    <button onClick={handleRequestRefill} className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-500">Request Refill</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );

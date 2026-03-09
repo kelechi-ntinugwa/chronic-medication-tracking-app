@@ -140,3 +140,4 @@ C:\Users\ntinu\.gemini\antigravity\scratch\chronic-medication-tracking-app\api\o
 C:\Users\ntinu\.gemini\antigravity\scratch\chronic-medication-tracking-app\api\obj\Debug\net9.0\Api.pdb
 C:\Users\ntinu\.gemini\antigravity\scratch\chronic-medication-tracking-app\api\obj\Debug\net9.0\Api.genruntimeconfig.cache
 C:\Users\ntinu\.gemini\antigravity\scratch\chronic-medication-tracking-app\api\obj\Debug\net9.0\ref\Api.dll
+C:\Users\ntinu\.gemini\antigravity\scratch\chronic-medication-tracking-app\api\obj\Debug\net9.0\Api.sourcelink.json

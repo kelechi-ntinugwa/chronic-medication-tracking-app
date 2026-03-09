@@ -10,6 +10,17 @@ export default function ProviderDashboard() {
     const [userEmail, setUserEmail] = useState("");
     const [appointments, setAppointments] = useState<any[]>([]);
     const [records, setRecords] = useState<any[]>([]);
+    const [refills, setRefills] = useState<any[]>([]);
+    const [patientIdInput, setPatientIdInput] = useState("");
+    const [patientInsights, setPatientInsights] = useState<{ symptoms: any[], vitals: any[] } | null>(null);
+
+    // Prescription Modal State
+    const [showRxModal, setShowRxModal] = useState(false);
+    const [rxPatientId, setRxPatientId] = useState("");
+    const [rxMedication, setRxMedication] = useState("");
+    const [rxDosage, setRxDosage] = useState("");
+    const [rxInstructions, setRxInstructions] = useState("");
+    const [rxRefills, setRxRefills] = useState(1);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -23,12 +34,14 @@ export default function ProviderDashboard() {
         const fetchData = async () => {
             try {
                 const config = { headers: { Authorization: `Bearer ${token}` } };
-                const [apptsRes, recsRes] = await Promise.all([
+                const [apptsRes, recsRes, refillsRes] = await Promise.all([
                     axios.get("http://localhost:5233/api/appointments", config),
-                    axios.get("http://localhost:5233/api/medicalrecords", config)
+                    axios.get("http://localhost:5233/api/medicalrecords", config),
+                    axios.get("http://localhost:5233/api/refillrequests", config).catch(() => ({ data: [] }))
                 ]);
                 setAppointments(apptsRes.data);
                 setRecords(recsRes.data);
+                setRefills(refillsRes.data);
             } catch (err) {
                 console.error("Failed to fetch provider dashboard data", err);
             }
@@ -41,6 +54,49 @@ export default function ProviderDashboard() {
         localStorage.removeItem("token");
         localStorage.removeItem("userEmail");
         router.push("/");
+    };
+
+    const fetchInsights = async () => {
+        if (!patientIdInput) return;
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const [sympRes, vitalsRes] = await Promise.all([
+                axios.get(`http://localhost:5233/api/symptoms?patientId=${patientIdInput}`, config),
+                axios.get(`http://localhost:5233/api/vitals?patientId=${patientIdInput}`, config)
+            ]);
+            setPatientInsights({
+                symptoms: sympRes.data,
+                vitals: vitalsRes.data
+            });
+        } catch (err) {
+            console.error("Failed to fetch insights", err);
+            alert("No insights found for this patient ID, or unauthorized.");
+        }
+    };
+
+    const handleWritePrescription = async () => {
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const res = await axios.post("http://localhost:5233/api/prescriptions", {
+                PatientProfileId: parseInt(rxPatientId, 10),
+                MedicationName: rxMedication,
+                Dosage: rxDosage,
+                Instructions: rxInstructions,
+                RefillsRemaining: rxRefills
+            }, config);
+
+            if (res.data.interactionsWarning) {
+                alert(res.data.interactionsWarning);
+            } else {
+                alert("Prescription written successfully!");
+            }
+            setShowRxModal(false);
+            window.location.reload();
+        } catch (e) {
+            alert("Error writing prescription. Ensure Patient ID is valid.");
+        }
     };
 
     return (
@@ -59,6 +115,10 @@ export default function ProviderDashboard() {
             </nav>
 
             <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Workspace</h2>
+                    <button onClick={() => setShowRxModal(true)} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 font-medium">+ Write Prescription</button>
+                </div>
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 
                     {/* Today's Schedule */}
@@ -124,7 +184,117 @@ export default function ProviderDashboard() {
                         )}
                     </div>
 
+                    {/* Pending Refill Requests */}
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Action Needed: Refill Requests</h2>
+                        {refills.length === 0 ? (
+                            <p className="text-sm text-zinc-500 italic">No pending refill requests.</p>
+                        ) : (
+                            <div className="space-y-4">
+                                {refills.filter((r: any) => r.status === 'Requested').map((req: any) => (
+                                    <div key={req.id} className="border-b border-zinc-100 dark:border-zinc-800 pb-3 last:border-0 flex justify-between items-center">
+                                        <div>
+                                            <p className="font-medium text-zinc-900 dark:text-white">{req.patientName}</p>
+                                            <p className="text-sm text-zinc-600 dark:text-zinc-400">{req.medicationName}</p>
+                                            <p className="text-xs text-zinc-500 mt-1">{new Date(req.requestedDate).toLocaleDateString()}</p>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-500">Approve</button>
+                                            <button className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-500">Deny</button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Patient Insights Panel */}
+                    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950 lg:col-span-2">
+                        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Patient Health Insights</h2>
+                        <div className="flex gap-4 mb-6">
+                            <input
+                                type="text"
+                                placeholder="Enter Patient ID (e.g. 1)"
+                                value={patientIdInput}
+                                onChange={(e) => setPatientIdInput(e.target.value)}
+                                className="flex-1 rounded-lg border-zinc-300 py-2 pl-3 px-4 text-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                            />
+                            <button onClick={fetchInsights} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-500 font-medium">Load Insights</button>
+                        </div>
+
+                        {patientInsights && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <h3 className="text-md font-medium text-zinc-800 dark:text-zinc-200 mb-3 border-b border-zinc-100 dark:border-zinc-800 pb-2">Recent Symptoms</h3>
+                                    {patientInsights.symptoms.length === 0 ? (
+                                        <p className="text-sm text-zinc-500 italic">No symptoms logged.</p>
+                                    ) : (
+                                        <ul className="space-y-3">
+                                            {patientInsights.symptoms.map((sym: any) => (
+                                                <li key={sym.id} className="text-sm border-l-4 border-orange-400 pl-3">
+                                                    <p className="font-semibold text-zinc-900 dark:text-white">{sym.symptom} <span className="font-normal text-zinc-500">(Severity: {sym.severity}/10)</span></p>
+                                                    <p className="text-zinc-500 text-xs mt-1">{new Date(sym.date).toLocaleDateString()} - {sym.notes || 'No notes'}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                                <div>
+                                    <h3 className="text-md font-medium text-zinc-800 dark:text-zinc-200 mb-3 border-b border-zinc-100 dark:border-zinc-800 pb-2">Recent Vitals</h3>
+                                    {patientInsights.vitals.length === 0 ? (
+                                        <p className="text-sm text-zinc-500 italic">No vitals logged.</p>
+                                    ) : (
+                                        <ul className="space-y-3">
+                                            {patientInsights.vitals.map((v: any) => (
+                                                <li key={v.id} className="text-sm border-l-4 border-blue-400 pl-3">
+                                                    <p className="text-zinc-900 dark:text-white">BP: <span className="font-semibold">{v.bloodPressure || 'N/A'}</span>, HR: <span className="font-semibold">{v.heartRate || 'N/A'}</span></p>
+                                                    <p className="text-zinc-500 text-xs mt-1">{new Date(v.date).toLocaleDateString()}</p>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
                 </div>
+
+                {/* Write Prescription Modal */}
+                {showRxModal && (
+                    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                        <div className="bg-white dark:bg-zinc-900 p-6 rounded-xl shadow-lg w-full max-w-md">
+                            <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4">Write Prescription</h3>
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Patient Profile ID</label>
+                                    <input type="number" placeholder="e.g. 1" value={rxPatientId} onChange={e => setRxPatientId(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                    <p className="text-xs text-zinc-500 mt-1">Found via Patient Records search.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Medication Name</label>
+                                    <input type="text" placeholder="e.g. Lisinopril" value={rxMedication} onChange={e => setRxMedication(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Dosage</label>
+                                    <input type="text" placeholder="e.g. 10mg once daily" value={rxDosage} onChange={e => setRxDosage(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Instructions</label>
+                                    <input type="text" placeholder="e.g. Take with food" value={rxInstructions} onChange={e => setRxInstructions(e.target.value)} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">Refills Allowed</label>
+                                    <input type="number" min="0" value={rxRefills} onChange={e => setRxRefills(parseInt(e.target.value))} className="w-full border-zinc-300 rounded-lg p-2 dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" />
+                                </div>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button onClick={() => setShowRxModal(false)} className="px-4 py-2 text-zinc-600 dark:text-zinc-400 font-medium hover:bg-zinc-100 dark:hover:bg-zinc-800 rounded-lg">Cancel</button>
+                                    <button onClick={handleWritePrescription} className="px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-500">Sign & Prescribe</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </main>
         </div>
     );
