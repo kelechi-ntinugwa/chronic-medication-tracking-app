@@ -14,6 +14,11 @@ export default function ProviderDashboard() {
     const [patientIdInput, setPatientIdInput] = useState("");
     const [patientInsights, setPatientInsights] = useState<{ symptoms: any[], vitals: any[] } | null>(null);
 
+    // Patient Search State
+    const [patientSearchQuery, setPatientSearchQuery] = useState("");
+    const [patientSearchResults, setPatientSearchResults] = useState<any[]>([]);
+    const [isSearchingPatients, setIsSearchingPatients] = useState(false);
+
     // Prescription Modal State
     const [showRxModal, setShowRxModal] = useState(false);
     const [rxPatientId, setRxPatientId] = useState("");
@@ -72,6 +77,26 @@ export default function ProviderDashboard() {
         } catch (err) {
             console.error("Failed to fetch insights", err);
             alert("No insights found for this patient ID, or unauthorized.");
+        }
+    };
+
+    const handleSearchPatients = async (query: string) => {
+        setPatientSearchQuery(query);
+        if (!query.trim()) {
+            setPatientSearchResults([]);
+            return;
+        }
+
+        setIsSearchingPatients(true);
+        try {
+            const token = localStorage.getItem("token");
+            const config = { headers: { Authorization: `Bearer ${token}` } };
+            const res = await axios.get(`http://localhost:5233/api/patients/search?query=${encodeURIComponent(query)}`, config);
+            setPatientSearchResults(res.data);
+        } catch (err) {
+            console.error("Failed to search patients", err);
+        } finally {
+            setIsSearchingPatients(false);
         }
     };
 
@@ -161,11 +186,45 @@ export default function ProviderDashboard() {
                         <div className="relative mb-4">
                             <input
                                 type="text"
-                                placeholder="Search patient by name or ID..."
+                                placeholder="Search patient by name or email..."
+                                value={patientSearchQuery}
+                                onChange={(e) => handleSearchPatients(e.target.value)}
                                 className="w-full rounded-lg border-zinc-300 py-2 pl-3 pr-10 text-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
                             />
+                            {isSearchingPatients && <div className="absolute right-3 top-2.5 text-xs text-zinc-400">Searching...</div>}
+
+                            {/* Search Results Dropdown */}
+                            {patientSearchResults.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-white dark:bg-zinc-800 rounded-md shadow-lg border border-zinc-200 dark:border-zinc-700 max-h-60 overflow-y-auto">
+                                    {patientSearchResults.map(patient => (
+                                        <div key={patient.id} className="p-3 border-b border-zinc-100 dark:border-zinc-700 last:border-0 hover:bg-zinc-50 dark:hover:bg-zinc-700 flex justify-between items-center">
+                                            <div>
+                                                <div className="font-medium text-sm text-zinc-900 dark:text-white">{patient.firstName} {patient.lastName}</div>
+                                                <div className="text-xs text-zinc-500">{patient.email}</div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-xs font-mono bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-2 py-1 rounded border border-indigo-100 dark:border-indigo-800/50">
+                                                    ID: {patient.id}
+                                                </span>
+                                                <button
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(patient.id.toString());
+                                                        // Automatically populate the prescription modal if we pop it open later
+                                                        setRxPatientId(patient.id.toString());
+                                                        setPatientIdInput(patient.id.toString());
+                                                    }}
+                                                    className="text-xs cursor-pointer text-blue-600 hover:text-blue-500"
+                                                    title="Copy ID to Clipboard & Auto-fill forms"
+                                                >
+                                                    Select
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
-                        <p className="text-sm text-zinc-500 italic mb-4">Use the search bar to find a patient.</p>
+                        <p className="text-sm text-zinc-500 italic mb-4">Search to get a Patient's ID for Prescriptions and Insights.</p>
 
                         {records.length > 0 && (
                             <div className="space-y-3 mt-4">

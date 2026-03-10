@@ -51,7 +51,10 @@ public class AuthController : ControllerBase
 
         var result = await _userManager.CreateAsync(user, request.Password!);
         if (!result.Succeeded)
-            return StatusCode(StatusCodes.Status500InternalServerError, new { Status = "Error", Message = "User creation failed! Please check user details and try again." });
+        {
+            var errors = string.Join(" ", result.Errors.Select(e => e.Description));
+            return StatusCode(StatusCodes.Status500InternalServerError, new { Status = "Error", Message = errors });
+        }
 
         if (!await _roleManager.RoleExistsAsync(request.Role!))
             await _roleManager.CreateAsync(new IdentityRole(request.Role!));
